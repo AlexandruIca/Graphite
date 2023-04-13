@@ -18,4 +18,6 @@ pub mod executor;
 #[cfg(feature = "quantization")]
 pub mod quantization;
 
+pub mod image_segmentation;
+
 pub use graphene_core::*;

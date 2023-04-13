@@ -725,6 +725,17 @@ fn static_nodes() -> Vec<DocumentNodeType> {
 			outputs: vec![DocumentOutputType::new("Vector", FrontendGraphDataType::Subpath)],
 			properties: node_properties::stroke_properties,
 		},
+		DocumentNodeType {
+			name: "Image Segmentation",
+			category: "Image Adjustments",
+			identifier: NodeImplementation::proto("graphene_std::image_segmentation::ImageSegmentationNode<_>"),
+			inputs: vec![
+				DocumentInputType::value("Image", TaggedValue::ImageFrame(ImageFrame::empty()), true),
+				DocumentInputType::value("Mask", TaggedValue::ImageFrame(ImageFrame::empty()), true),
+			],
+			outputs: vec![DocumentOutputType::new("Image", FrontendGraphDataType::Raster)],
+			properties: node_properties::no_properties,
+		},
 	]
 }
 

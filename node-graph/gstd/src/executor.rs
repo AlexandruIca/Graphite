@@ -123,7 +123,6 @@ async fn map_gpu(image: ImageFrame<Color>, node: DocumentNode) -> ImageFrame<Col
 	.await
 	.unwrap();
 	//return ImageFrame::empty();
-
 	let len: usize = image.image.data.len();
 
 	let executor = NewExecutor::new().await.unwrap();

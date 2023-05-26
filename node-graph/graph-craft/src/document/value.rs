@@ -190,10 +190,11 @@ impl<'a> TaggedValue {
 		match self {
 			TaggedValue::None => "()".to_string(),
 			TaggedValue::String(x) => format!("\"{}\"", x),
-			TaggedValue::U32(x) => x.to_string(),
-			TaggedValue::F32(x) => x.to_string(),
-			TaggedValue::F64(x) => x.to_string(),
+			TaggedValue::U32(x) => x.to_string() + "_u32",
+			TaggedValue::F32(x) => x.to_string() + "_f32",
+			TaggedValue::F64(x) => x.to_string() + "_f64",
 			TaggedValue::Bool(x) => x.to_string(),
+			TaggedValue::BlendMode(blend_mode) => "BlendMode::".to_string() + &blend_mode.to_string(),
 			_ => panic!("Cannot convert to primitive string"),
 		}
 	}

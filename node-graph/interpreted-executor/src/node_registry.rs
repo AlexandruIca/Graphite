@@ -229,6 +229,29 @@ fn node_registry() -> HashMap<NodeIdentifier, HashMap<NodeIOTypes, NodeConstruct
 			},
 			NodeIOTypes::new(concrete!(ImageFrame<Color>), concrete!(ImageFrame<Color>), vec![value_fn!(DocumentNode)]),
 		)],
+		#[cfg(feature = "gpu")]
+		vec![(
+			NodeIdentifier::new("graphene_std::executor::BlendGpuImageNode<_, _, _>"),
+			|args| {
+				Box::pin(async move {
+					let background: DowncastBothNode<(), ImageFrame<Color>> = DowncastBothNode::new(args[0]);
+					let background = ClonedNode::new(background.eval(()).await);
+					let blend_mode: DowncastBothNode<(), BlendMode> = DowncastBothNode::new(args[1]);
+					let blend_mode = ClonedNode::new(blend_mode.eval(()).await);
+					let opacity: DowncastBothNode<(), f32> = DowncastBothNode::new(args[2]);
+					let opacity = ClonedNode::new(opacity.eval(()).await);
+					let node = graphene_std::executor::BlendGpuImageNode::new(background, blend_mode, opacity);
+					let any: DynAnyNode<ImageFrame<Color>, _, _> = graphene_std::any::DynAnyNode::new(graphene_core::value::ValueNode::new(node));
+
+					Box::pin(any) as TypeErasedPinned
+				})
+			},
+			NodeIOTypes::new(
+				concrete!(ImageFrame<Color>),
+				concrete!(ImageFrame<Color>),
+				vec![value_fn!(ImageFrame<Color>), value_fn!(BlendMode), value_fn!(f32)],
+			),
+		)],
 		vec![(
 			NodeIdentifier::new("graphene_core::structural::ComposeNode<_, _, _>"),
 			|args| {

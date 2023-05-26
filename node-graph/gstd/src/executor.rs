@@ -58,7 +58,7 @@ async fn map_gpu(image: ImageFrame<Color>, node: DocumentNode) -> ImageFrame<Col
 		nodes: [
 			DocumentNode {
 				name: "Slice".into(),
-				inputs: vec![NodeInput::Inline(InlineRust::new("i0[(_global_index.y * i0 + _global_index.x) as usize]".into(), concrete![Color]))],
+				inputs: vec![NodeInput::Inline(InlineRust::new("i1[(_global_index.y * i0 + _global_index.x) as usize]".into(), concrete![Color]))],
 				implementation: DocumentNodeImplementation::Unresolved("graphene_core::value::CopiedNode".into()),
 				..Default::default()
 			},
@@ -262,8 +262,6 @@ async fn blend_gpu_image(foreground: ImageFrame<Color>, background: ImageFrame<C
 	let background_size = DVec2::new(background.image.width as f64, background.image.height as f64);
 	// Transforms a point from the background image to the forground image
 	let bg_to_fg = DAffine2::from_scale(foreground_size) * foreground.transform.inverse() * background.transform * DAffine2::from_scale(1. / background_size);
-	// Footprint of the foreground image (0,0) (1, 1) in the background image space
-	let bg_aabb = compute_transformed_bounding_box(background.transform.inverse() * foreground.transform).axis_aligned_bbox();
 
 	let transform_matrix: Mat2 = bg_to_fg.matrix2.as_mat2();
 	let translation: Vec2 = bg_to_fg.translation.as_vec2();
@@ -283,13 +281,13 @@ async fn blend_gpu_image(foreground: ImageFrame<Color>, background: ImageFrame<C
 							graphene_core::value::CopiedNode::new({}),
 						).eval((
 							{{
-								let bg_point = Vec2::new((_global_index.x % i3[3]) as f32, (_global_index.x / i3[3]) as f32);
+								let bg_point = Vec2::new(_global_index.x as f32, _global_index.y as f32);
 								let fg_point = (*i4) * bg_point + (*i5);
 
 								if !((fg_point.cmpge(Vec2::ZERO) & bg_point.cmpge(Vec2::ZERO)) == BVec2::new(true, true)) {{
 									Color::from_rgbaf32_unchecked(0.0, 0.0, 0.0, 0.0)
 								}} else {{
-									i2[((fg_point.y as u32) * i3[0] + (fg_point.x as u32)) as usize]
+									i2[((fg_point.y as u32) * i3 + (fg_point.x as u32)) as usize]
 								}}
 							}},
 							i1[(_global_index.y * i0 + _global_index.x) as usize],
@@ -328,7 +326,7 @@ async fn blend_gpu_image(foreground: ImageFrame<Color>, background: ImageFrame<C
 				ShaderInput::UniformBuffer((), concrete!(u32)),                    // width of the output image
 				ShaderInput::StorageBuffer((), concrete!(Color)),                  // background image
 				ShaderInput::StorageBuffer((), concrete!(Color)),                  // foreground image
-				ShaderInput::StorageBuffer((), concrete!(u32)),                    // width/height of the foreground image, width of the background image
+				ShaderInput::UniformBuffer((), concrete!(u32)),                    // width of the foreground image
 				ShaderInput::UniformBuffer((), concrete_with_name!(Mat2, "Mat2")), // bg_to_fg.matrix2
 				ShaderInput::UniformBuffer((), concrete_with_name!(Vec2, "Vec2")), // bg_to_fg.translation
 				ShaderInput::OutputBuffer((), concrete!(Color)),
@@ -367,40 +365,13 @@ async fn blend_gpu_image(foreground: ImageFrame<Color>, background: ImageFrame<C
 			},
 		)
 		.unwrap();
-	let bg_dimensions_uniform = executor
-		.create_storage_buffer(
-			vec![background.image.width as u32, background.image.height as u32],
-			StorageBufferOptions {
-				cpu_writable: false,
-				gpu_writable: false,
-				cpu_readable: false,
-				storage: true,
-			},
-		)
-		.unwrap();
-	let fg_dimensions_uniform = executor
-		.create_storage_buffer(
-			vec![
-				foreground.image.width as u32,
-				foreground.image.height as u32,
-				foreground.image.data.len() as u32,
-				background.image.width as u32,
-			],
-			StorageBufferOptions {
-				cpu_writable: false,
-				gpu_writable: false,
-				cpu_readable: false,
-				storage: true,
-			},
-		)
-		.unwrap();
+	let fg_width_uniform = executor.create_uniform_buffer(foreground.image.width).unwrap();
 	let transform_uniform = executor.create_uniform_buffer(transform_matrix).unwrap();
 	let translation_uniform = executor.create_uniform_buffer(translation).unwrap();
 	let width_uniform = Arc::new(width_uniform);
 	let bg_storage_buffer = Arc::new(bg_storage_buffer);
 	let fg_storage_buffer = Arc::new(fg_storage_buffer);
-	let bg_dimensions_uniform = Arc::new(bg_dimensions_uniform);
-	let fg_dimensions_uniform = Arc::new(fg_dimensions_uniform);
+	let fg_width_uniform = Arc::new(fg_width_uniform);
 	let transform_uniform = Arc::new(transform_uniform);
 	let translation_uniform = Arc::new(translation_uniform);
 	let output_buffer = executor.create_output_buffer(len, concrete!(Color), false).unwrap();
@@ -413,7 +384,7 @@ async fn blend_gpu_image(foreground: ImageFrame<Color>, background: ImageFrame<C
 			width_uniform.clone(),
 			bg_storage_buffer.clone(),
 			fg_storage_buffer.clone(),
-			fg_dimensions_uniform.clone(),
+			fg_width_uniform.clone(),
 			transform_uniform.clone(),
 			translation_uniform.clone(),
 		],

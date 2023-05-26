@@ -3,7 +3,7 @@ use crate::executor::Any;
 pub use crate::imaginate_input::{ImaginateMaskStartingFill, ImaginateSamplingMethod, ImaginateStatus};
 use crate::proto::{Any as DAny, FutureAny};
 
-use graphene_core::raster::{BlendMode, LuminanceCalculation};
+use graphene_core::raster::{to_primtive_string, BlendMode, LuminanceCalculation};
 use graphene_core::{Color, Node, Type};
 
 pub use dyn_any::StaticType;
@@ -194,7 +194,7 @@ impl<'a> TaggedValue {
 			TaggedValue::F32(x) => x.to_string() + "_f32",
 			TaggedValue::F64(x) => x.to_string() + "_f64",
 			TaggedValue::Bool(x) => x.to_string(),
-			TaggedValue::BlendMode(blend_mode) => "BlendMode::".to_string() + &blend_mode.to_string(),
+			TaggedValue::BlendMode(blend_mode) => "BlendMode::".to_string() + to_primtive_string(blend_mode),
 			_ => panic!("Cannot convert to primitive string"),
 		}
 	}
